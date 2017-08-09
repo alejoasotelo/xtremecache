@@ -11,8 +11,6 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-require __DIR__.DS.'vendor'.DS.'phpfastcache.php';
-
 class XtremeCache extends Module
 {
     /** @var int cache expire time in seconds **/
@@ -22,7 +20,7 @@ class XtremeCache extends Module
     const REACTIVE = true;
 
     /** @var boolean wether a custom header should be sent **/
-    const CUSTOMER_HEADER = true;
+    const CUSTOM_HEADER = true;
 
     /** @var array of int Don"t cache certain languages **/
     public static $EXCLUDED_LANGS = [];
@@ -42,19 +40,20 @@ class XtremeCache extends Module
 
     public function __construct()
     {
-        @ini_set('display_errors', 'on');
+        /*@ini_set('display_errors', 'on');
         @error_reporting(E_ALL | E_STRICT);
-        @define('_PS_DEBUG_SQL_', true);
+        @define('_PS_DEBUG_SQL_', true);*/
 
         $this->name = 'xtremecache';
         $this->tab = 'frontend_features';
         $this->version = '1.0.7';
-        $this->author = 'Simone Salerno';
+        $this->author = 'Simone Salerno | Collaborator: Alejo Sotelo';
 
         parent::__construct();
 
         $this->displayName = $this->l('Xtreme cache');
         $this->description = $this->l('Cache non-dynamic pages in the front office.');
+        $this->ps_versions_compliancy = array("min" => "1.6", "max" => "1.6.99.99");
 
         $this->cache = Cache::getInstance();
     }
@@ -66,7 +65,6 @@ class XtremeCache extends Module
      */
     public function __call($name, $arguments)
     {
-        die('__call');
         if (static::REACTIVE && (0 === strpos(strtolower($name), 'hookaction'))) {
             $this->cache->flush();
         } else {
@@ -81,7 +79,6 @@ class XtremeCache extends Module
     public function install()
     {
         return parent::install() &&
-                $this->registerHook('actionDispatcher') &&
                 $this->registerHook('actionRequestComplete') &&
                 $this->registerHook('actionCategoryAdd') &&
                 $this->registerHook('actionCategoryUpdate') &&
@@ -101,7 +98,6 @@ class XtremeCache extends Module
     public function uninstall()
     {
         return parent::uninstall() &&
-            $this->unregisterHook('actionDispatcher') &&
             $this->unregisterHook('actionRequestComplete') &&
             $this->unregisterHook("actionCategoryAdd") &&
             $this->unregisterHook("actionCategoryUpdate") &&
@@ -123,39 +119,11 @@ class XtremeCache extends Module
         if ($this->isActive() && ($html = $this->load())) {
             ob_clean();
 
-            if (static::CUSTOMER_HEADER) {
+            if (static::CUSTOM_HEADER) {
                 header("X-Xtremecached: True");
             }
 
             die($html);
-        }
-    }
-
-    /**
-     * Check if page exists in cache
-     * If it exists, serve and abort
-     * @param array $params
-     */
-    public function hookActionDispatcher($params)
-    {
-        if (!$this->isActive()) {
-            return;
-        }
-
-        $controller_type = $params['controller_type'];
-
-        //if front page and not in the checkout process
-        if ($params['controller_class'] !== 'OrderController' &&
-            $params['controller_class'] !== 'OrderOpcController' &&
-            Dispatcher::FC_FRONT === $controller_type) {
-            //$cached = $this->fast_cache->get($this->getCacheKey());
-            $cached = $this->cache->get($this->key());
-
-            if (null !== $cached) {
-                //empty output buffer
-                ob_get_clean();
-                die($cached);
-            }
         }
     }
 
@@ -165,21 +133,15 @@ class XtremeCache extends Module
      */
     public function hookActionRequestComplete($params)
     {
-        echo '<h1>hookActionRequestComplete: '.$this->isActive().'</h1>';
         if (!$this->isActive()) {
             return;
         }
-
-        die('hookActionRequestComplete');
 
         $controller = $params['controller'];
 
         if (is_subclass_of($controller, 'FrontController') &&
             !is_subclass_of($controller, 'OrderController') &&
             !is_subclass_of($controller, 'OrderOpcController')) {
-            /*require_once(_PS_TOOL_DIR_.'minify_html'.DS.'minify_html.class.php');
-            $output = Minify_HTML::minify($params['output']);*/
-            //mark page as cached
             $this->store($params['output']);
         }
     }
@@ -199,8 +161,8 @@ class XtremeCache extends Module
                 && Configuration::get("PS_SHOP_ENABLE")                             // skip on catalogue mode
                 && !Tools::getValue("ajax")                                         // skip on AJAX requests
                 && filter_input(INPUT_SERVER, "REQUEST_METHOD") === "GET"           // skip on POST requests
-                && (!is_null($cart) && $cart->id_customer < 1)                      // skip if user is logged in
-                && (!is_null($cart) && $cart->nbProducts() < 1)                     // skip if cart is not empty
+                && $cart->id_customer < 1                      // skip if user is logged in
+                && $cart->nbProducts() < 1                                          // skip if cart is not empty
                 && $this->isNotExcluded($cart->id_lang, self::$EXCLUDED_LANGS)
                 && $this->isNotExcluded($cart->id_shop, self::$EXCLUDE_SHOPS)
                 && $this->isNotExcluded($cart->id_currency, self::$EXCLUDE_CURRENCIES)
@@ -225,7 +187,6 @@ class XtremeCache extends Module
      */
     private function store($html)
     {
-        die('store');
         $key = $this->key();
         $reponse = sprintf("<!-- xtremecache on %s -->\n%s", date("Y-m-d H:i:s"), $html);
 

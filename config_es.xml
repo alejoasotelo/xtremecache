@@ -3,8 +3,8 @@
 	<name>xtremecache</name>
 	<displayName><![CDATA[Xtreme cache]]></displayName>
 	<version><![CDATA[1.0.7]]></version>
-	<description><![CDATA[Cache non-dynamic pages in the front office.]]></description>
-	<author><![CDATA[Simone Salerno]]></author>
+	<description><![CDATA[Cachea paginas que no son dinamicas en el frente de la tienda.]]></description>
+	<author><![CDATA[Simone Salerno | Colaborador: Alejo Sotelo]]></author>
 	<tab><![CDATA[frontend_features]]></tab>
 	<is_configurable>0</is_configurable>
 	<need_instance>1</need_instance>
