@@ -69,8 +69,7 @@ class XtremeCache extends Module
         die('__call');
         if (static::REACTIVE && (0 === strpos(strtolower($name), 'hookaction'))) {
             $this->cache->flush();
-        }
-        else {
+        } else {
             return parent::__call($name, $arguments);
         }
     }
